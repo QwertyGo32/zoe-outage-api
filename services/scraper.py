@@ -15,38 +15,68 @@ class ScraperService:
     """Сервіс для парсингу графіків відключень з ZOE.COM.UA"""
 
     BASE_URL = "https://www.zoe.com.ua/outage/"
-    TIMEOUT = 10
+    TIMEOUT = 30  # Increased from 10 to 30 seconds
+    MAX_RETRIES = 3
 
     def __init__(self):
         self.session = requests.Session()
         self.session.verify = False
+        # Add User-Agent to avoid being blocked
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'uk-UA,uk;q=0.9,en;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive'
+        })
 
     def fetch_schedules(self) -> List[Dict]:
         """Отримати всі графіки зі сторінки"""
-        try:
-            logger.info(f"Fetching schedules from {self.BASE_URL}")
-            response = self.session.get(self.BASE_URL, timeout=self.TIMEOUT)
-            response.raise_for_status()
+        last_error = None
 
-            soup = BeautifulSoup(response.text, 'html.parser')
-            articles = soup.find_all('article')
+        # Retry logic with exponential backoff
+        for attempt in range(self.MAX_RETRIES):
+            try:
+                if attempt > 0:
+                    import time
+                    wait_time = 2 ** attempt  # 2, 4, 8 seconds
+                    logger.info(f"Retry attempt {attempt + 1}/{self.MAX_RETRIES} after {wait_time}s")
+                    time.sleep(wait_time)
 
-            logger.info(f"Found {len(articles)} articles")
+                logger.info(f"Fetching schedules from {self.BASE_URL} (attempt {attempt + 1})")
+                response = self.session.get(self.BASE_URL, timeout=self.TIMEOUT)
+                response.raise_for_status()
 
-            schedules = []
-            for idx, article in enumerate(articles):
-                schedule = self._parse_article(article, idx)
-                if schedule:
-                    schedules.append(schedule)
+                soup = BeautifulSoup(response.text, 'html.parser')
+                articles = soup.find_all('article')
 
-            return schedules
+                logger.info(f"Found {len(articles)} articles")
 
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Error fetching schedules: {e}")
-            raise Exception(f"Failed to fetch schedules: {str(e)}")
-        except Exception as e:
-            logger.error(f"Unexpected error: {e}")
-            raise
+                schedules = []
+                for idx, article in enumerate(articles):
+                    schedule = self._parse_article(article, idx)
+                    if schedule:
+                        schedules.append(schedule)
+
+                return schedules
+
+            except requests.exceptions.Timeout as e:
+                last_error = e
+                logger.warning(f"Timeout on attempt {attempt + 1}: {e}")
+                continue
+            except requests.exceptions.RequestException as e:
+                last_error = e
+                logger.error(f"Request error on attempt {attempt + 1}: {e}")
+                if attempt == self.MAX_RETRIES - 1:
+                    break
+                continue
+            except Exception as e:
+                logger.error(f"Unexpected error: {e}")
+                raise
+
+        # All retries failed
+        logger.error(f"Failed after {self.MAX_RETRIES} attempts. Last error: {last_error}")
+        raise Exception(f"Failed to fetch schedules after {self.MAX_RETRIES} attempts: {str(last_error)}")
 
     def _parse_article(self, article, index: int) -> Optional[Dict]:
         """Парсинг окремої статті"""
