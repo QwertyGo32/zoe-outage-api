@@ -1,0 +1,55 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+.env
+.venv
+
+# Git
+.git
+.gitignore
+
+# Cache
+cache/
+*.cache
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Documentation
+*.md
+!README.md
+
+# Test files
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Temporary files
+*.tmp
+*.html
+*.json
+!requirements.json
+
+# Project specific
+outage_page.html
+parsed_schedules.json
+wp_api_index.json
+Dockerfile.backup
+.dockerignore
+
+# Railway specific
+railway.toml
+Procfile
+
+# Development
+investigate_site.py
+check_wp_api.py
+parse_schedules.py
