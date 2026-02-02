@@ -1,21 +1,26 @@
-# fly.toml app configuration file
+# fly.toml app configuration file generated for zoe-outage-api on 2026-02-02T19:32:20+02:00
+#
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
-app = "zoe-outage-api"
-primary_region = "fra"  # Frankfurt, Germany - closest to Ukraine
+app = 'zoe-outage-api'
+primary_region = 'fra'
 
 [build]
+
+[env]
+  PORT = '8080'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = true
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
-  processes = ["app"]
+  processes = ['app']
 
   [http_service.concurrency]
-    type = "connections"
+    type = 'connections'
     hard_limit = 25
     soft_limit = 20
 
@@ -23,6 +28,4 @@ primary_region = "fra"  # Frankfurt, Germany - closest to Ukraine
   memory = '256mb'
   cpu_kind = 'shared'
   cpus = 1
-
-[env]
-  PORT = "8080"
+  memory_mb = 256
