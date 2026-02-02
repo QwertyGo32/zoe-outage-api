@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./cache:/app/cache
+    environment:
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - CACHE_TTL_MINUTES=30
+      - LOG_LEVEL=INFO
+    restart: unless-stopped
